@@ -1,0 +1,26 @@
+<launch>
+
+
+
+
+  <rosparam param="">
+  origin:
+    latitude: 46.026399
+    longitude: 8.918542
+    altitude: 300.0
+    heading: 20.0
+  gps_id: 0
+  </rosparam>
+
+
+  <node pkg="mav_control" type="eight_path.py" name="eight_path">
+    <param name="radius" value="2"/>
+    <rosparam param="center">[-2.5,-2.5, 0]</rosparam>
+  </node>
+  <remap from="target" to="/mavros/setpoint_raw/global"/>
+  <remap from="pose" to="/mavros/mocap/pose"/>
+  <node pkg="mav_control" type="follow_path.py" name="follow_path" output="screen">
+    <param name="delta" value="1.4"/>
+    <param name="loop" value="true"/>
+  </node>
+</launch>
