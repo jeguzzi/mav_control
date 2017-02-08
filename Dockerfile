@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y \
    ros-kinetic-dynamic-reconfigure \
    python-pip \
    ros-kinetic-tf \
-   ros-kinetic-tf2_ros \
+   ros-kinetic-tf2-ros \
    ros-kinetic-tf2-geometry-msgs
 
 RUN pip install numpy shapely utm
