@@ -4,7 +4,10 @@ MAINTAINER Jerome Guzzi "jerome@idsia.ch"
 RUN apt-get update && apt-get install -y \
    libgeos-c1v5 \
    ros-kinetic-dynamic-reconfigure \
-   python-pip
+   python-pip \
+   ros-kinetic-tf \
+   ros-kinetic-tf2_ros \
+   ros-kinetic-tf2-geometry-msgs
 
 RUN pip install numpy shapely utm
 
