@@ -6,6 +6,12 @@
   <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="screen">
     <param name="delta" value="1.4"/>
     <param name="loop" value="false"/>
+    <rosparam param="range">
+      - [0, 0]
+      - [0, 10]
+      - [10, 10]
+      - [10, 0]
+   </rosparam>
   </node>
   </group>
 </launch>

@@ -5,7 +5,7 @@ from geometry_msgs.msg import PoseStamped, Pose, Quaternion
 from geometry_msgs.msg import Point as PointMsg
 from nav_msgs.msg import Path, Odometry
 import numpy as np
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
 from mavros_msgs.msg import GlobalPositionTarget
 from dynamic_reconfigure.server import Server
 from mav_control.cfg import PathFollowerConfig
@@ -41,6 +41,10 @@ class PathFollower(object):
         self.delta = rospy.get_param("~delta", 0.5)
         self.horizon = rospy.get_param("~distance", 1.5)
         self.loop = rospy.get_param("~loop", True)
+        # We assume that the range is given in map frame (as for now, 2D)
+        _range = rospy.get_param("~range")
+        self.range_shape = Polygon(_range)
+        self.range_height = (0, 100)
         rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
         rospy.Subscriber("path", Path, self.has_updated_path)
         self.pub = rospy.Publisher(
@@ -50,6 +54,10 @@ class PathFollower(object):
 
         Server(PathFollowerConfig, self.reconfigure)
         rospy.spin()
+
+    def in_range(self, pose):
+        p = Point(_a(pose.position))
+        return p.within(self.range)
 
     def reconfigure(self, config, level):
         self.delta = config.get('delta', self.delta)
@@ -63,6 +71,7 @@ class PathFollower(object):
         self.ls = np.linalg.norm(np.diff(self.ps, axis=0), axis=1)
         self.cs = np.cumsum(self.ls)
         self.yaws = [_yaw(pose.pose.orientation) for pose in msg.poses]
+        rospy.loginfo("Got new path %s", self.curve)
 
     def target(self, pose):
         current_point = np.array(_a(pose.position))
@@ -110,6 +119,8 @@ class PathFollower(object):
             rospy.logerr(e)
             return None
         pose = tf2_geometry_msgs.do_transform_pose(pose_stamped, transform)
+        if not self.in_range(pose):
+            return None
         point, yaw = self.target(pose.pose)
         q = quaternion_from_euler(0, 0, yaw)
         msg = PoseStamped(
@@ -161,12 +172,17 @@ class PathFollower(object):
         self.pub_pose.publish(pose)
 
     def has_updated_odometry(self, msg):
-        if self.curve:
+        # rospy.loginfo("-")
+        if self.curve is not None:
+            # rospy.loginfo("*")
             pose_stamped = PoseStamped()
             pose_stamped.header = msg.header
             pose_stamped.header.frame_id = 'utm'
             pose_stamped.pose = msg.pose.pose
+            # rospy.loginfo("**")
             t_pose_stamped = self.target_pose_stamped(pose_stamped)
+            # rospy.loginfo(
+            #    "Got new odom => publish target %s", t_pose_stamped)
             if t_pose_stamped:
                 self.publish_target_pose(t_pose_stamped)
 
