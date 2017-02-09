@@ -5,6 +5,11 @@
         <include file="$(find mavros)/launch/node.launch">
             <arg name="fcu_url" value="tcp://127.0.0.1:$(arg port)"/>
             <arg name="gcs_url" value="udp://@"/>
+            <arg name="tgt_system" value="1"/>
+            <arg name="tgt_component" value="1"/>
+            <arg name="log_output" value="screen"/>
+            <arg name="pluginlists_yaml" value="$(find mav_control)/config/pluginlists.yaml"/>
+            <arg name="config_yaml" value="$(find mav_control)/config/config.yaml"/>
         </include>
     </group>
 </launch>
