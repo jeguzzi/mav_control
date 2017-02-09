@@ -10,7 +10,7 @@ services:
     build: ./mavros
     network_mode: host
     container_name: mavros
-    image: mavros:kinetic
+    image: mav_control
     env_file:
       - ./ros.env
       - ./mavros.env
@@ -18,7 +18,9 @@ services:
       - ./logs:/root/.ros/log:rw
     depends_on:
       - xbee
-    command: rosrun mavros mavros_node _fcu_url:=tcp://127.0.0.1:12345
+    environement:
+      - "ROS_NAMESPACE="
+    command: roslaunch mav_control mavros_xbee.launch port:=12345 id=1
   control:
     build: .
     container_name: mav_control
@@ -29,6 +31,6 @@ services:
       - ./logs:/home/root/.ros/log:rw
     network_mode: host
     image: mav_control
-    command: roslaunch mav_control odroid.launch
+    command: roslaunch mav_control odroid.launch id=1 ns=rover_0
     depends_on:
       - mavros

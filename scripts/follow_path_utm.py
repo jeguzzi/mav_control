@@ -45,8 +45,8 @@ class PathFollower(object):
         _range = rospy.get_param("~range")
         self.range_shape = Polygon(_range)
         self.range_height = (0, 100)
-        rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
-        rospy.Subscriber("path", Path, self.has_updated_path)
+        rospy.Subscriber("~odom", Odometry, self.has_updated_odometry)
+        rospy.Subscriber("~path", Path, self.has_updated_path)
         self.pub = rospy.Publisher(
             "target", GlobalPositionTarget, queue_size=1)
         self.pub_pose = rospy.Publisher(
