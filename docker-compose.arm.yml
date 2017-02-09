@@ -17,7 +17,7 @@ services:
     volumes:
       - ./logs:/root/.ros/log:rw
     depends_on:
-      xbee
+      - xbee
     command: rosrun mavros mavros_node _fcu_url:=tcp://127.0.0.1:12345
   control:
     build: .
