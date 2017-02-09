@@ -18,8 +18,6 @@ services:
       - ./logs:/root/.ros/log:rw
     depends_on:
       - xbee
-    environement:
-      - "ROS_NAMESPACE="
     command: roslaunch mav_control mavros_xbee.launch port:=12345 id=1
   control:
     build: .
