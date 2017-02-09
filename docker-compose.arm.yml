@@ -1,16 +1,23 @@
 version: '2'
 services:
+  xbee:
+    container_name: xbee_bridge
+    image: xbee_bridge
+    network_mode: host
+    privileged: true
+    command: xbee_bridge --ip 127.0.0.1
   mavros:
     build: ./mavros
     network_mode: host
     container_name: mavros
     image: mavros:kinetic
-    privileged: true
     env_file:
       - ./ros.env
       - ./mavros.env
     volumes:
       - ./logs:/root/.ros/log:rw
+    depends_on:
+      xbee
     command: rosrun mavros mavros_node _fcu_url:=tcp://127.0.0.1:12345
   control:
     build: .
