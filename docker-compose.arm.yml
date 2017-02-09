@@ -29,6 +29,6 @@ services:
       - ./logs:/home/root/.ros/log:rw
     network_mode: host
     image: mav_control
-    command: roslaunch mav_control odroid.launch id=1 ns=rover_0
+    command: roslaunch mav_control odroid.launch id:=1 ns:=rover_0
     depends_on:
       - mavros
