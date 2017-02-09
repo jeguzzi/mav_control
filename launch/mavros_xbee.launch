@@ -4,7 +4,7 @@
     <group ns="$(env HOSTNAME)/r$(arg id)">
         <include file="$(find mavros)/launch/node.launch">
             <arg name="fcu_url" value="tcp://127.0.0.1:$(arg port)"/>
-            <arg name="gcs_url" value=""/>
+            <arg name="gcs_url" value="udp://@"/>
         </include>
     </group>
 </launch>
