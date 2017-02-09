@@ -18,7 +18,7 @@ services:
       - ./logs:/root/.ros/log:rw
     depends_on:
       - xbee
-    command: roslaunch mav_control mavros_xbee.launch port:=12345 id=1
+    command: roslaunch mav_control mavros_xbee.launch
   control:
     build: .
     container_name: mav_control
@@ -29,6 +29,6 @@ services:
       - ./logs:/home/root/.ros/log:rw
     network_mode: host
     image: mav_control
-    command: roslaunch mav_control odroid.launch id:=1 ns:=rover_0
+    command: roslaunch mav_control odroid.launch
     depends_on:
       - mavros
