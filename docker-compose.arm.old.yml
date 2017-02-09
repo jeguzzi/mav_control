@@ -1,0 +1,33 @@
+services:
+  xbee:
+    container_name: xbee_bridge
+    image: xbee_bridge
+    network_mode: host
+    privileged: true
+    command: xbee_bridge --ip 127.0.0.1
+  mavros:
+    build: ./mavros
+    network_mode: host
+    container_name: mavros
+    image: mav_control
+    env_file:
+      - ./ros.env
+      - ./mavros.env
+    volumes:
+      - ./logs:/root/.ros/log:rw
+    depends_on:
+      - xbee
+    command: roslaunch mav_control mavros_xbee.launch
+  control:
+    build: .
+    container_name: mav_control
+    env_file:
+      - ./ros.env
+      - ./mavros.env
+    volumes:
+      - ./logs:/home/root/.ros/log:rw
+    network_mode: host
+    image: mav_control
+    command: roslaunch mav_control odroid.launch
+    depends_on:
+      - mavros
