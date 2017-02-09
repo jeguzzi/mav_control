@@ -1,8 +1,9 @@
 version: '2'
 services:
   mavros:
+    build: ./mavros
     network_mode: host
-    container_name: mav_ros
+    container_name: mavros
     image: mavros:kinetic
     privileged: true
     env_file:
@@ -12,6 +13,7 @@ services:
       - ./logs:/root/.ros/log:rw
     command: rosrun mavros mavros_node _fcu_url:=tcp://127.0.0.1:12345
   control:
+    build: .
     container_name: mav_control
     env_file:
       - ./ros.env
@@ -22,4 +24,4 @@ services:
     image: mav_control
     command: roslaunch mav_control odroid.launch
     depends_on:
-      - mav_ros
+      - mavros
