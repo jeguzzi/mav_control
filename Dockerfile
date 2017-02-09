@@ -11,5 +11,6 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install numpy shapely utm
 
-COPY . /home/root/catkin_ws/src/mav_control
-RUN /bin/bash -c '. /opt/ros/kinetic/setup.bash; catkin_make -C /home/root/catkin_ws;'
+COPY . src/mav_control
+
+RUN catkin build
