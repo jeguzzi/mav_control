@@ -7,11 +7,13 @@ project(mav_control)
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
-  roscpp
   rospy
   std_msgs
   mavros_msgs
   dynamic_reconfigure
+  tf
+  tf2_ros
+  tf2_geometry_msgs
 )
 
 ## System dependencies are found with CMake's conventions

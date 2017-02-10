@@ -1,0 +1,23 @@
+  xbee:
+    image: xbee_bridge
+    net: host
+    privileged: true
+    command: xbee_bridge --ip 127.0.0.1
+  mavros:
+    net: host
+    image: mav_control
+    env_file:
+      - ./ros.env
+      - ./mavros.env
+    volumes:
+      - ./logs:/root/.ros/log:rw
+    command: roslaunch mav_control mavros_xbee.launch
+  control:
+    env_file:
+      - ./ros.env
+      - ./mavros.env
+    volumes:
+      - ./logs:/home/root/.ros/log:rw
+    net: host
+    image: mav_control
+    command: roslaunch mav_control odroid.launch
