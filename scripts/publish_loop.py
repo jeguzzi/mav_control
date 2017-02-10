@@ -4,7 +4,7 @@ import numpy as np
 from nav_msgs.msg import Path
 from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
-import tf
+# import tf
 
 
 def arc((x, y), radius, a0, a1, subdivisions=20):
@@ -12,7 +12,8 @@ def arc((x, y), radius, a0, a1, subdivisions=20):
         s = -1.0
     else:
         s = 1.0
-    return [(np.array([x + radius * np.cos(t), y + radius * np.sin(t), 0]), t + s * np.pi * 0.5)
+    return [(np.array([x + radius * np.cos(t), y + radius * np.sin(t), 0]),
+             t + s * np.pi * 0.5)
             for t in np.linspace(a0, a1, subdivisions)]
 
 
@@ -44,14 +45,14 @@ def eight_path(alpha):
     return wps + [wps[0]]
 
 
-def path_msg(wps, center, radius):
+def path_msg(wps, center, radius, frame_id):
 
     msg = Path()
     msg.header.seq = 0
     msg.header.stamp = rospy.Time.now()
-    msg.header.frame_id = "World"
+    msg.header.frame_id = frame_id
 
-    pose_header = Header(frame_id='World')
+    pose_header = Header(frame_id=frame_id)
 
     msg.poses = [PoseStamped(
         header=pose_header,
@@ -65,16 +66,18 @@ def path_msg(wps, center, radius):
 
     return msg
 
+
 if __name__ == '__main__':
 
     rospy.init_node('publish_loop', anonymous=True)
     pub = rospy.Publisher('path', Path, queue_size=1, latch=True)
     center = np.array(rospy.get_param('~center'))
     radius = rospy.get_param('~radius')
+    frame_id = rospy.get_param('~frame_id')
     t = rospy.get_param('~type')
     paths = {'f1': f1_path(),
              'eight': eight_path(np.pi * 0.25),
              'circle': circle_path()}
-    msg = path_msg(paths.get(t, paths['f1']), center, radius)
+    msg = path_msg(paths.get(t, paths['f1']), center, radius, frame_id)
     pub.publish(msg)
     rospy.spin()
