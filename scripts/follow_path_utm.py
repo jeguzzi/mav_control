@@ -42,10 +42,14 @@ class PathFollower(object):
         self.horizon = rospy.get_param("~distance", 1.5)
         self.loop = rospy.get_param("~loop", True)
         # We assume that the range is given in map frame (as for now, 2D)
-        _range = rospy.get_param("~range")
-        self.range_shape = Polygon(_range)
-        self.range_height = (0, 100)
+        _range = rospy.get_param("~range", None)
+        if _range:
+            self.range_shape = Polygon(_range)
+            self.range_height = (0, 100)
+        else:
+            self.range_shape = self.range_height = None
         rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
+        rospy.Subscriber("pose", PoseStamped, self.has_updated_pose)
         rospy.Subscriber("path", Path, self.has_updated_path)
         self.pub = rospy.Publisher(
             "target", GlobalPositionTarget, queue_size=1)
@@ -56,6 +60,8 @@ class PathFollower(object):
         rospy.spin()
 
     def in_range(self, pose):
+        if not self.range:
+            return True
         p = Point(_a(pose.position))
         return p.within(self.range)
 
@@ -171,20 +177,18 @@ class PathFollower(object):
         self.pub.publish(msg)
         self.pub_pose.publish(pose)
 
-    def has_updated_odometry(self, msg):
-        # rospy.loginfo("-")
+    def has_updated_pose(self, msg):
         if self.curve is not None:
-            # rospy.loginfo("*")
-            pose_stamped = PoseStamped()
-            pose_stamped.header = msg.header
-            pose_stamped.header.frame_id = 'utm'
-            pose_stamped.pose = msg.pose.pose
-            # rospy.loginfo("**")
-            t_pose_stamped = self.target_pose_stamped(pose_stamped)
-            # rospy.loginfo(
-            #    "Got new odom => publish target %s", t_pose_stamped)
+            t_pose_stamped = self.target_pose_stamped(msg)
             if t_pose_stamped:
                 self.publish_target_pose(t_pose_stamped)
+
+    def has_updated_odometry(self, msg):
+        if self.curve is not None:
+            pose_stamped = PoseStamped()
+            pose_stamped.header = msg.header
+            pose_stamped.pose = msg.pose.pose
+            self.has_updated_pose(pose_stamped)
 
 
 if __name__ == '__main__':
