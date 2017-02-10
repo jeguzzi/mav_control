@@ -1,0 +1,23 @@
+<launch>
+  <arg name="rigid_body" default="bebop"/>
+  <node pkg="topic_tools" type="throttle" name="throttle_pose" args="messages /optitrack/$(arg rigid_body) 10.0 /rover_0/mavros/mocap/pose"/>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="map2world" args="5.367 4.67 0 1.5708 0 0 map World" output="screen"/>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="utm2world" args="493696.082822 5097005.38856 0 0 0.805928282249 -0.592013178799 utm map" output="screen"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find mav_control)/map/map.yaml" />
+  <group ns="rover_0">
+    <node pkg="mav_control" type="publish_loop.py" name="loop_path">
+      <param name="radius" value="2.5"/>
+      <rosparam param="center">[5, 5, 0]</rosparam>
+      <param name="type" value="f1"/>
+      <param name="frame_id" value="map"/>
+    </node>
+    <remap from="target" to="mavros/setpoint_raw/global"/>
+    <remap from="pose" to="mavros/mocap/pose"/>
+    <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="screen">
+      <param name="delta" value="1.0"/>
+      <param name="distance" value="2.0"/>
+      <param name="loop" value="true"/>
+    </node>
+  </group>
+</launch>
