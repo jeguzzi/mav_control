@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 import rospy
-from std_msgs.msg import String, Header
-from geometry_msgs.msg import PoseStamped, Pose, Quaternion, Point
+from std_msgs.msg import Header
+from geometry_msgs.msg import PoseStamped, Pose, Quaternion
+from geometry_msgs.msg import Point as Pointmsg
 from nav_msgs.msg import Path
 import numpy as np
-#import quaternion
-from shapely.geometry import LineString, Point, MultiPoint
+# import quaternion
+from shapely.geometry import LineString, Point
 from mavros_msgs.msg import GlobalPositionTarget
 # TODO proof of concept for 2D paths
 from dynamic_reconfigure.server import Server
@@ -19,17 +20,18 @@ def _a(point):
 def _q(o):
     return [o.x, o.y, o.z, o.w]
 
+
 wgs84_a = 6378137.0
 wgs84_b = 6356752.3142
 
 
 def piece(curve, s0, s1, loop, cs):
-    print 'A', s0,s1
+    print 'A', s0, s1
     if s0 < 0:
         if loop:
             s0 = s0 + curve.length
         else:
-            s = 0
+            s0 = 0
     if s1 > curve.length:
         if loop:
             s1 = s1 - curve.length
@@ -48,7 +50,6 @@ def piece(curve, s0, s1, loop, cs):
 
     return LineString([p0] + coords + [p1])
 
-
     # print curve.difference(
     #     MultiPoint([p0, p1]))
     #
@@ -65,10 +66,10 @@ def project(point, curve, old_s, max_delta, loop, cs):
     if old_s is None:
         return curve.project(point)
     curve_piece = piece(curve, old_s - max_delta, old_s + max_delta, loop, cs)
-    #print curve_piece.wkt
+    # print curve_piece.wkt
     print curve_piece.length
     s = curve_piece.project(point)
-    print 'point', point,'s', s
+    print 'point', point, 's', s
     if s > 0 and s < curve_piece.length:
         s = s + old_s - max_delta
         if s > curve.length:
@@ -104,8 +105,9 @@ class PathFollower(object):
         nx = 1.0 / (wgs84_a * np.cos(lat * np.pi / 180.0) * np.pi / 180.0)
         ny = 1.0 / (wgs84_b * np.pi / 180.0)
 
-        self.local2latlon = np.matrix([[np.cos(angle) * nx, -np.sin(angle) * nx],
-                                       [np.sin(angle) * ny, np.cos(angle) * ny]])
+        self.local2latlon = np.matrix(
+            [[np.cos(angle) * nx, -np.sin(angle) * nx],
+             [np.sin(angle) * ny, np.cos(angle) * ny]])
 
         rospy.Subscriber("pose", PoseStamped, self.has_updated_pose)
         rospy.Subscriber("path", Path, self.has_updated_path)
@@ -113,8 +115,7 @@ class PathFollower(object):
             "target", GlobalPositionTarget, queue_size=1)
         self.pub_pose = rospy.Publisher(
             "target_pose", PoseStamped, queue_size=1)
-
-        srv = Server(PathFollowerConfig, self.reconfigure)
+        self.srv = Server(PathFollowerConfig, self.reconfigure)
 
         rospy.spin()
 
@@ -129,7 +130,8 @@ class PathFollower(object):
         self.ls = np.linalg.norm(np.diff(self.ps, axis=0), axis=1)
         self.cs = np.cumsum(self.ls)
         self.yaws = [np.arctan2(
-            pose.pose.orientation.z, pose.pose.orientation.w) * 2.0 for pose in msg.poses]
+            pose.pose.orientation.z, pose.pose.orientation.w) * 2.0
+            for pose in msg.poses]
         # print self.curve
         # print self.ls
         # print 'YAWS', self.yaws
@@ -139,7 +141,7 @@ class PathFollower(object):
 
         current_point = np.array(_a(pose.position))
 
-        #s = self.curve.project(Point(_a(pose.position)))
+        # s = self.curve.project(Point(_a(pose.position)))
 
         print 'old s', self.s
 
@@ -197,12 +199,10 @@ class PathFollower(object):
         dp = dp / dpn
         point = current_point + max(self.horizon, dpn) * dp
 
-        # print yaw0, yaw1, yaw
-
         msg = PoseStamped(
             header=Header(frame_id='World'),
             pose=Pose(
-                position=Point(point[0], point[1], 0),
+                position=Pointmsg(point[0], point[1], 0),
                 orientation=Quaternion(0, 0, np.sin(
                     yaw * 0.5), np.cos(yaw * 0.5))
             )
@@ -211,7 +211,8 @@ class PathFollower(object):
         return msg
 
     def pose2wgs84(self, point, yaw):
-        return (self.local2latlon.dot(point) + self.origin, yaw + self.angle - np.pi * 0.5)
+        return (self.local2latlon.dot(point) + self.origin,
+                yaw + self.angle - np.pi * 0.5)
 
     def publish_target_pose(self, pose):
         point = _a(pose.pose.position)

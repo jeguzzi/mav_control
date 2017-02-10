@@ -1,17 +1,8 @@
 <launch>
 
-  <!-- <rosparam param="">
-  origin:
-    latitude: 46.026399
-    longitude: 8.918542
-    altitude: 300.0
-    heading: 20.0
-  gps_id: 0
-  </rosparam> -->
-
   <node pkg="mav_control" type="publish_loop.py" name="loop_path">
     <param name="radius" value="2"/>
-    <rosparam param="center">[-2.5,-4.5, 0]</rosparam>
+    <rosparam param="center">[0, 0, 0]</rosparam>
     <param name="type" value="eight"/>
   </node>
   <remap from="target" to="/mavros/setpoint_raw/global"/>
