@@ -60,10 +60,10 @@ class PathFollower(object):
         rospy.spin()
 
     def in_range(self, pose):
-        if not self.range:
+        if not self.range_shape:
             return True
         p = Point(_a(pose.position))
-        return p.within(self.range)
+        return p.within(self.range_shape)
 
     def reconfigure(self, config, level):
         self.delta = config.get('delta', self.delta)
