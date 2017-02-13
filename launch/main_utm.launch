@@ -1,5 +1,5 @@
 <launch>
-   <arg name="ns" default=""/>
+   <arg name="ns" default="rover_0"/>
    <group ns="$(arg ns)">
   <remap from="target" to="mavros/setpoint_raw/global"/>
   <remap from="odom" to="mavros/global_position/local"/>

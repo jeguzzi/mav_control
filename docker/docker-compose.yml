@@ -1,0 +1,14 @@
+version: '2'
+services:
+  control:
+    image: mav_control
+    build:
+      dockerfile: docker/Dockerfile
+      context: ..
+    command: roslaunch mav_control main_utm.launch
+    env_file:
+      - ./ros.env
+    volumes:
+      - ./logs:/home/root/.ros/log:rw
+      - ..:src/mav_control
+    network_mode: host

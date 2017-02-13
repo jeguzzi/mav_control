@@ -1,0 +1,5 @@
+version: '2'
+services:
+  mavproxy:
+    build: .
+    image: mav_control
