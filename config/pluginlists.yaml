@@ -7,3 +7,4 @@ plugin_whitelist:
 - 'global_position'
 - 'setpoint_position'
 - 'sys_status'
+- 'imu_pub'
