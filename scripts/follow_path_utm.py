@@ -62,7 +62,7 @@ class PathFollower(object):
     def in_range(self, pose):
         if not self.range_shape:
             return True
-        p = Point(_a(pose.position))
+        p = Point(_a(pose.pose.position))
         return p.within(self.range_shape)
 
     def reconfigure(self, config, level):
