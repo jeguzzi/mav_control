@@ -46,8 +46,11 @@ class PathFollower(object):
         if _range:
             self.range_shape = Polygon(_range)
             self.range_height = (0, 100)
+            rospy.loginfo("With range %s", self.range_shape.wkt)
         else:
             self.range_shape = self.range_height = None
+            rospy.loginfo('Without range')
+
         rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
         rospy.Subscriber("pose", PoseStamped, self.has_updated_pose)
         rospy.Subscriber("path", Path, self.has_updated_path)

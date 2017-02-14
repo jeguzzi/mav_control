@@ -15,6 +15,7 @@
   control:
     env_file:
       - ./ros.env
+      - ./controller.env
       - ./mavros.env
     volumes:
       - ./logs:/home/root/.ros/log:rw
