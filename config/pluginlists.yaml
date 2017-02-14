@@ -5,6 +5,6 @@ plugin_blacklist:
 plugin_whitelist:
 - 'command'
 - 'global_position'
-- 'setpoint_position'
+- 'setpoint_raw'
 - 'sys_status'
 - 'imu_pub'

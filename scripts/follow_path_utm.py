@@ -7,6 +7,7 @@ from nav_msgs.msg import Path, Odometry
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 from mavros_msgs.msg import GlobalPositionTarget
+from mavros_msgs.srv import SetMode
 from dynamic_reconfigure.server import Server
 from mav_control.cfg import PathFollowerConfig
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
@@ -37,10 +38,12 @@ class PathFollower(object):
         self.tfBuffer = tf2_ros.Buffer()
         self.tf = TransformListener(self.tfBuffer)
         self.curve = None
+        self.following = False
         self.path = None
         self.delta = rospy.get_param("~delta", 0.5)
         self.horizon = rospy.get_param("~distance", 1.5)
         self.loop = rospy.get_param("~loop", True)
+        self.min_distance = rospy.get_param("~min_distance", 0.5)
         # We assume that the range is given in map frame (as for now, 2D)
         _range = rospy.get_param("~range", None)
         if _range:
@@ -51,6 +54,9 @@ class PathFollower(object):
             self.range_shape = self.range_height = None
             rospy.loginfo('Without range')
 
+        rospy.wait_for_service('mavros/set_mode')
+        self.change_mode = rospy.ServiceProxy('mavros/set_mode', SetMode)
+
         rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
         rospy.Subscriber("pose", PoseStamped, self.has_updated_pose)
         rospy.Subscriber("path", Path, self.has_updated_path)
@@ -60,13 +66,29 @@ class PathFollower(object):
             "target_pose", PoseStamped, queue_size=1)
 
         Server(PathFollowerConfig, self.reconfigure)
+
         rospy.spin()
+
+    def guide(self):
+        # self.change_mode(SetModeRequest.MAV_MODE_GUIDED_ARMED, '')
+        self.change_mode(0, 'GUIDED')
+
+    def hover(self):
+        # self.change_mode(SetModeRequest.MAV_MODE_MANUAL_ARMED, '')
+        self.change_mode(0, 'MANUAL')
 
     def in_range(self, pose):
         if not self.range_shape:
             return True
         p = Point(_a(pose.pose.position))
         return p.within(self.range_shape)
+
+    def has_arrived(self, pose):
+        if self.loop:
+            return False
+        target = self.ps[-1]
+        distance = np.linalg.norm(target - _a(pose.pose.position))
+        return distance < self.min_distance
 
     def reconfigure(self, config, level):
         self.delta = config.get('delta', self.delta)
@@ -75,12 +97,23 @@ class PathFollower(object):
 
     def has_updated_path(self, msg):
         self.path = msg
-        self.curve = LineString([_a(pose.pose.position) for pose in msg.poses])
+        if not msg.poses:
+            self.path = None
+            self.curve = None
+            self.following = False
+            self.hover()
+            rospy.loginfo("Empty path, will stop drone")
+            return
+
+        self.curve = LineString(
+            [_a(pose.pose.position) for pose in msg.poses])
         self.ps = np.array(self.curve)
         self.ls = np.linalg.norm(np.diff(self.ps, axis=0), axis=1)
         self.cs = np.cumsum(self.ls)
         self.yaws = [_yaw(pose.pose.orientation) for pose in msg.poses]
-        rospy.loginfo("Got new path %s", self.curve)
+        self.following = True
+        self.guide()
+        rospy.loginfo("Got new path, will guide to drone")
 
     def target(self, pose):
         current_point = np.array(_a(pose.position))
@@ -139,6 +172,9 @@ class PathFollower(object):
                 orientation=Quaternion(*q)
             )
         )
+        if self.has_arrived(pose):
+            self.following = False
+            self.hover()
         return msg
 
     def pose2wgs84(self, pose_stamped):
@@ -181,13 +217,13 @@ class PathFollower(object):
         self.pub_pose.publish(pose)
 
     def has_updated_pose(self, msg):
-        if self.curve is not None:
+        if self.following:
             t_pose_stamped = self.target_pose_stamped(msg)
             if t_pose_stamped:
                 self.publish_target_pose(t_pose_stamped)
 
     def has_updated_odometry(self, msg):
-        if self.curve is not None:
+        if self.following:
             pose_stamped = PoseStamped()
             pose_stamped.header = msg.header
             pose_stamped.pose = msg.pose.pose

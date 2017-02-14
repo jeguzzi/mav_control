@@ -6,7 +6,7 @@
         <remap from="target" to="mavros/setpoint_raw/global"/>
         <remap from="odom" to="mavros/global_position/local"/>
         <remap from="path" to="/$(arg ns)/path"/>
-        <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="screen" required="true">
+        <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="log" required="true">
             <param name="delta" value="1.4"/>
             <param name="loop" value="false"/>
             <rosparam param="range" subst_value="true">$(arg range)</rosparam>
