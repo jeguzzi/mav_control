@@ -1,6 +1,6 @@
 <launch>
-    <arg name="id" default="$(env id)"/>
-    <arg name="port" default="12345"/>
+    <arg name="id" default="$(optenv id 1)"/>
+    <arg name="port" default="$(optenv port 12345)"/>
     <group ns="$(env HOSTNAME)/r$(arg id)">
         <include file="$(find mavros)/launch/node.launch">
             <arg name="fcu_url" value="tcp://127.0.0.1:$(arg port)"/>

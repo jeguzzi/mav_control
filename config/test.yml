@@ -1,0 +1,35 @@
+-
+   key: KEY_0
+   commands:
+      - waypoint:
+         frame_id: map
+         point: [5, 5]
+         tol: 0.3
+-
+   key: KEY_1
+   commands:
+      - waypoint:
+         frame_id: map
+         point: [7, 7]
+         tol: 0.3
+      - sleep:
+         duration: 2
+      - waypoint:
+         frame_id: map
+         point: [7, 3]
+      - waypoint:
+         frame_id: map
+         point: [3, 3]
+      - waypoint:
+         frame_id: map
+         point: [3, 7]
+      - waypoint:
+         frame_id: map
+         point: [7, 7]
+-
+   key: KEY_2
+   commands:
+      - path:
+         frame_id: map
+         curve: [[5, 2], [5, 5]]
+         speed: 0.3

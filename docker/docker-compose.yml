@@ -1,7 +1,7 @@
 version: '2'
 services:
   control:
-    image: mav_control
+    image: jeguzzi/df:mav_control
     build:
       dockerfile: docker/Dockerfile
       context: ..
