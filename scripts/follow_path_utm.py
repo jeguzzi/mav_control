@@ -15,6 +15,7 @@ import utm
 import tf2_ros
 import tf2_geometry_msgs
 from tf2_ros import TransformListener
+import platform
 
 
 def _a(point):
@@ -42,10 +43,12 @@ class PathFollower(object):
         self.path = None
         self.delta = rospy.get_param("~delta", 0.5)
         self.horizon = rospy.get_param("~distance", 1.5)
-        self.loop = rospy.get_param("~loop", True)
         self.min_distance = rospy.get_param("~min_distance", 0.5)
         # We assume that the range is given in map frame (as for now, 2D)
+        hostname = platform.uname()[1]
         _range = rospy.get_param("~range", None)
+        if not _range:
+            _range = rospy.get_param("/controllers/{hostname}/range".format(**locals()), None)
         if _range:
             self.range_shape = Polygon(_range)
             self.range_height = (0, 100)
@@ -110,6 +113,12 @@ class PathFollower(object):
         self.ps = np.array(self.curve)
         self.ls = np.linalg.norm(np.diff(self.ps, axis=0), axis=1)
         self.cs = np.cumsum(self.ls)
+        self.loop = False
+        if np.linalg.norm(self.ps[0] - self.ps[-1]) < 1e-3:
+            if np.linalg.norm(self.ps[0] - self.ps[len(self.ps) / 2]) > 1:
+                rospy.loginfo('is a loop')
+                self.loop = True
+
         self.yaws = [_yaw(pose.pose.orientation) for pose in msg.poses]
         self.following = True
         self.guide()
