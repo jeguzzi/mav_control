@@ -1,0 +1,16 @@
+<launch>
+    <arg name="ns" default="rover_0"/>
+    <group ns="$(arg ns)">
+        <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="screen" required="true">
+            <param name="delta" value="1.4"/>
+            <param name="frame_id" value="map"/>
+            <remap from="target" to="mavros/setpoint_raw/global"/>
+            <remap from="odom" to="mavros/global_position/local"/>
+        </node>
+        <node pkg="mav_control" type="test.py" name="controller_test" output="screen">
+            <remap from="pose" to="mavros/mocap/pose"/>
+            <rosparam param='tests' command="load" file="$(find mav_control)/config/test.yml"/>
+        </node>
+        <node pkg="keyboard" type="keyboard" name="keyboard"/>
+    </group>
+</launch>
