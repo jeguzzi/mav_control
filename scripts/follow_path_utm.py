@@ -17,6 +17,8 @@ import tf2_geometry_msgs
 from tf2_ros import TransformListener
 import platform
 
+# TODO: set speed
+
 
 def _a(point):
     return [point.x, point.y]
@@ -41,6 +43,8 @@ class PathFollower(object):
         self.curve = None
         self.following = False
         self.path = None
+        self.waypoint = None
+        self.frame_id = rospy.get_param("~frame_id", "map")
         self.delta = rospy.get_param("~delta", 0.5)
         self.horizon = rospy.get_param("~distance", 1.5)
         self.min_distance = rospy.get_param("~min_distance", 0.5)
@@ -57,40 +61,50 @@ class PathFollower(object):
             self.range_shape = self.range_height = None
             rospy.loginfo('Without range')
 
-        rospy.wait_for_service('mavros/set_mode')
-        self.change_mode = rospy.ServiceProxy('mavros/set_mode', SetMode)
-
         rospy.Subscriber("odom", Odometry, self.has_updated_odometry)
         rospy.Subscriber("pose", PoseStamped, self.has_updated_pose)
         rospy.Subscriber("path", Path, self.has_updated_path)
+        rospy.Subscriber("waypoint", PoseStamped, self.has_updated_waypoint)
         self.pub = rospy.Publisher(
             "target", GlobalPositionTarget, queue_size=1)
         self.pub_pose = rospy.Publisher(
             "target_pose", PoseStamped, queue_size=1)
 
         Server(PathFollowerConfig, self.reconfigure)
+        self.change_mode = None
+        rospy.wait_for_service('mavros/set_mode')
+        self.change_mode = rospy.ServiceProxy('mavros/set_mode', SetMode)
 
         rospy.spin()
 
     def guide(self):
         # self.change_mode(SetModeRequest.MAV_MODE_GUIDED_ARMED, '')
-        self.change_mode(0, 'GUIDED')
+        if self.change_mode:
+            self.change_mode(0, 'GUIDED')
 
     def hover(self):
         # self.change_mode(SetModeRequest.MAV_MODE_MANUAL_ARMED, '')
-        self.change_mode(0, 'MANUAL')
+        if self.change_mode:
+            self.change_mode(0, 'MANUAL')
 
-    def in_range(self, pose):
+    def in_range(self, point):
         if not self.range_shape:
             return True
-        p = Point(_a(pose.pose.position))
+        p = Point(_a(point))
         return p.within(self.range_shape)
 
-    def has_arrived(self, pose):
+    @property
+    def target_point(self):
+        if self.waypoint:
+            return self.waypoint.pose.position
+        if self.path:
+            return self.path.poses[-1]
+        return None
+
+    def has_arrived(self, point):
         if self.loop:
             return False
-        target = self.ps[-1]
-        distance = np.linalg.norm(target - _a(pose.pose.position))
+        distance = np.linalg.norm(_a(self.target_point) - _a(point))
         return distance < self.min_distance
 
     def reconfigure(self, config, level):
@@ -98,14 +112,26 @@ class PathFollower(object):
         self.horizon = config.get('distance', self.horizon)
         return config
 
+    def has_updated_waypoint(self, msg):
+        self.waypoint = self.pose_in_frame(msg, self.frame_id)
+        self.path = None
+        self.following = self.waypoint is not None
+        if self.following:
+            self.guide()
+            rospy.loginfo("Got new wp, will guide the drone")
+        else:
+            rospy.loginfo("Got invalid wp, will stop the drone")
+            self.hover()
+
     def has_updated_path(self, msg):
-        self.path = msg
-        if not msg.poses:
+        self.path = self.path_in_frame(msg, self.frame_id)
+        self.waypoint = None
+        if not msg.poses or not self.path:
             self.path = None
             self.curve = None
             self.following = False
             self.hover()
-            rospy.loginfo("Empty path, will stop drone")
+            rospy.loginfo("Got invalid/empty path, will stop the drone")
             return
 
         self.curve = LineString(
@@ -116,17 +142,15 @@ class PathFollower(object):
         self.loop = False
         if np.linalg.norm(self.ps[0] - self.ps[-1]) < 1e-3:
             if np.linalg.norm(self.ps[0] - self.ps[len(self.ps) / 2]) > 1:
-                rospy.loginfo('is a loop')
                 self.loop = True
 
         self.yaws = [_yaw(pose.pose.orientation) for pose in msg.poses]
         self.following = True
         self.guide()
-        rospy.loginfo("Got new path, will guide to drone")
+        rospy.loginfo("Got new path (loop=%s), will guide the drone", self.loop)
 
-    def target(self, pose):
-        current_point = np.array(_a(pose.position))
-        s = self.curve.project(Point(_a(pose.position)))
+    def target_along_path(self, current_point):
+        s = self.curve.project(Point(current_point))
         s = s + self.delta
         if s > self.cs[-1]:
             if self.loop:
@@ -158,47 +182,47 @@ class PathFollower(object):
         point = current_point + dist * dp
         return point, yaw
 
-    def target_pose_stamped(self, pose_stamped):
+    def get_transform(self, from_frame, to_frame):
         try:
-            transform = self.tfBuffer.lookup_transform(
-                self.path.header.frame_id, pose_stamped.header.frame_id,
-                rospy.Time(0),
-                rospy.Duration(0.1)
+            return self.tfBuffer.lookup_transform(
+                from_frame, to_frame, rospy.Time(0), rospy.Duration(0.1)
             )
         except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
                 tf2_ros.ExtrapolationException) as e:
             rospy.logerr(e)
             return None
-        pose = tf2_geometry_msgs.do_transform_pose(pose_stamped, transform)
-        if not self.in_range(pose):
+
+    def path_in_frame(self, path, frame_id):
+        t = self.get_transform(path.header.frame_id, frame_id)
+        if not t:
             return None
-        point, yaw = self.target(pose.pose)
+        msg = Path(header=path.header)
+        msg.header.frame_id = frame_id
+        msg.poses = [tf2_geometry_msgs.do_transform_pose(pose, t) for pose in msg.poses]
+        return msg
+
+    def pose_in_frame(self, pose_s, frame_id):
+        t = self.get_transform(pose_s.header.frame_id, frame_id)
+        if not t:
+            return None
+        return tf2_geometry_msgs.do_transform_pose(pose_s, t)
+
+    def target_pose_along_path(self, pose_s):
+        current_point = np.array(_a(pose_s.pose.position))
+        point, yaw = self.target_along_path(current_point)
         q = quaternion_from_euler(0, 0, yaw)
         msg = PoseStamped(
             header=Header(frame_id=self.path.header.frame_id),
-            pose=Pose(
-                position=PointMsg(point[0], point[1], 0),
-                orientation=Quaternion(*q)
-            )
-        )
-        if self.has_arrived(pose):
-            self.following = False
-            self.hover()
+            pose=Pose(position=PointMsg(point[0], point[1], 0), orientation=Quaternion(*q)))
         return msg
 
-    def pose2wgs84(self, pose_stamped):
-        try:
-            transform = self.tfBuffer.lookup_transform(
-                'utm', pose_stamped.header.frame_id, rospy.Time(0),
-                rospy.Duration(0.1)
-            )
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException,
-                tf2_ros.ExtrapolationException) as e:
-            rospy.logerr(e)
-            return
-        utm_pose = tf2_geometry_msgs.do_transform_pose(pose_stamped, transform)
-        p = utm_pose.pose.position
-        q = _q(utm_pose.pose.orientation)
+    def pose2wgs84(self, pose_s):
+        t = self.get_transform('utm', pose_s.header.frame_id)
+        if not t:
+            return None
+        utm_pose_s = tf2_geometry_msgs.do_transform_pose(pose_s, t)
+        p = utm_pose_s.pose.position
+        q = _q(utm_pose_s.pose.orientation)
         _, _, yaw = euler_from_quaternion(q)
         lat, lon = utm.to_latlon(p.x, p.y, 32, 'T')
         # TODO check that yaw is defined in NED
@@ -206,8 +230,12 @@ class PathFollower(object):
         # Ardupilot corrently ignore yaw!
         return lat, lon, northing
 
-    def publish_target_pose(self, pose):
-        lat, lon, heading = self.pose2wgs84(pose)
+    def publish_target_pose(self, pose_s):
+        coords = self.pose2wgs84(pose_s)
+        if not coords:
+            rospy.logerr('Cannot compute pose in UTM frame')
+            return
+        lat, lon, heading = coords
         msg = GlobalPositionTarget()
         msg.coordinate_frame = GlobalPositionTarget.FRAME_GLOBAL_INT
         msg.type_mask = (GlobalPositionTarget.IGNORE_VX +
@@ -223,13 +251,34 @@ class PathFollower(object):
         msg.altitude = 0.0
         msg.yaw = heading
         self.pub.publish(msg)
-        self.pub_pose.publish(pose)
+        self.pub_pose.publish(pose_s)
 
     def has_updated_pose(self, msg):
         if self.following:
-            t_pose_stamped = self.target_pose_stamped(msg)
-            if t_pose_stamped:
-                self.publish_target_pose(t_pose_stamped)
+            pose_s = self.pose_in_frame(msg, self.frame_id)
+            if not pose_s:
+                rospy.logerr('Could not transform pose %s to frame %s', msg, self.frame_id)
+                return
+            point = pose_s.pose.position
+            if self.in_range(point):
+                rospy.loginfo('Current pose is outside of control range')
+                return
+            if self.has_arrived(point):
+                self.following = False
+                self.waypoint = None
+                self.path = None
+                self.hover()
+                rospy.logerror('Has arrived')
+                return
+            if self.waypoint:
+                target_pose_s = self.waypoint
+                intermediate_pose_s = target_pose_s
+            elif self.path:
+                target_pose_s, intermediate_pose_s = self.target_pose_along_path(pose_s)
+            if not intermediate_pose_s:
+                rospy.logerror('No target pose')
+                return
+            self.publish_target_pose(intermediate_pose_s)
 
     def has_updated_odometry(self, msg):
         if self.following:
