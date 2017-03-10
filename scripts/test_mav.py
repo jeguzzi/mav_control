@@ -2,9 +2,9 @@
 
 import rospy
 
-from mav_control.test_suite import ControlSuite
+from mav_control.test_suite_mav import MAVControlSuite
 
 
 if __name__ == '__main__':
-    ControlSuite()
+    MAVControlSuite()
     rospy.spin()
