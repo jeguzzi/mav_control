@@ -1,0 +1,10 @@
+<launch>
+    <arg name="ns" default="footbot_66"/>
+    <group ns="$(arg ns)">
+        <node pkg="mav_control" type="test.py" name="controller_test" output="screen">
+            <remap from="odom" to="mocap_odom"/>
+            <rosparam param='tests' command="load" file="$(find mav_control)/config/test_footbot.yml"/>
+        </node>
+        <node pkg="keyboard" type="keyboard" name="keyboard"/>
+    </group>
+</launch>
