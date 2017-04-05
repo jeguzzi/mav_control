@@ -54,13 +54,51 @@ def pose_in_frame(tf_buffer, pose_s, frame_id):
     return tf2_geometry_msgs.do_transform_pose(pose_s, t)
 
 
+def normalize_s(s, max_s, loop):
+    if s < 0:
+        if loop:
+            s = s + max_s
+        else:
+            s = 0
+    elif s > max_s:
+        if loop:
+            s = s - max_s
+        else:
+            s = max_s
+    return s
+
+
+def curve_segment(curve, s0, s1, loop, cs):
+    p0 = curve.interpolate(s0)
+    p1 = curve.interpolate(s1)
+    i0 = np.argmax(cs > s0)
+    i1 = np.argmax(cs > s1)
+    if i0 < i1:
+        coords = list(curve.coords[(i0 + 1):i1])
+    else:
+        coords = list(curve.coords[(i0 + 1):]) + list(curve.coords[:i1])
+
+    return LineString([p0] + coords + [p1])
+
+
+def project(point, curve, old_s, max_delta, loop, cs):
+    if old_s is None:
+        return curve.project(point)
+    if max_delta > curve.length:
+        return curve.project(point)
+    min_s = normalize_s(old_s - max_delta, curve.length, loop)
+    max_s = normalize_s(old_s + max_delta, curve.length, loop)
+    segment = curve_segment(curve, min_s, max_s, loop, cs)
+    s = segment.project(point)
+    return normalize_s(s + old_s - max_delta, curve.length, loop)
+
+
 class PathFollower(object):
     """docstring for PathFollower"""
     # TODO: set speed
 
-    def __init__(self, tf_buffer=None, ns=None, control_range=None):
+    def __init__(self, tf_buffer=None, ns='', control_range=None):
         super(PathFollower, self).__init__()
-        rospy.init_node('follow_path', anonymous=True)
         if not tf_buffer:
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
@@ -77,6 +115,14 @@ class PathFollower(object):
         self.min_distance = rospy.get_param("~min_distance", 0.5)
         self.target_height = rospy.get_param("~target_height", 0)
         self.height_range = rospy.get_param("~height_range", (0, 100))
+        self.track_s = rospy.get_param("~track_s", True)
+        self.s = None
+        self.max_speed = rospy.get_param("~max_speed", 1.0)
+        odom = rospy.get_param("~odom", 'odom')
+        pose = rospy.get_param("~pose", 'pose')
+        rate = rospy.get_param('~max_rate', 5.0)
+        self.min_dt = 1.0 / rate
+        self.last_t = rospy.Time.now()
         if not control_range:
             control_range = rospy.get_param("~range", None)
         if control_range:
@@ -87,11 +133,15 @@ class PathFollower(object):
             rospy.loginfo('Without range')
 
         self.pub_pose = rospy.Publisher("{ns}target_pose".format(ns=ns), PoseStamped, queue_size=1)
-        rospy.Subscriber("{ns}odom".format(ns=ns), Odometry, self.has_updated_odometry)
+        rospy.Subscriber("{ns}{odom}".format(ns=ns, odom=odom), Odometry, self.has_updated_odometry)
         rospy.Subscriber("{ns}stop".format(ns=ns), Empty, self.stop)
-        rospy.Subscriber("{ns}pose".format(ns=ns), PoseStamped, self.has_updated_pose)
+        rospy.Subscriber("{ns}{pose}".format(ns=ns, pose=pose), PoseStamped, self.has_updated_pose)
         rospy.Subscriber("{ns}path".format(ns=ns), Path, self.has_updated_path)
         rospy.Subscriber("{ns}waypoint".format(ns=ns), PoseStamped, self.has_updated_waypoint)
+
+    def should_send(self):
+        dt = rospy.Time.now() - self.last_t
+        return dt.to_sec() > self.min_dt
 
     def stop(self, msg=None):
         # Virtual
@@ -123,9 +173,11 @@ class PathFollower(object):
         return None
 
     def has_arrived(self, point):
+        rospy.loginfo('has_arrived %s', self.loop)
         if self.loop:
             return False
         distance = np.linalg.norm(array_from_msg(self.target_point) - array_from_msg(point))
+        rospy.loginfo('has_arrived %s %s %.1f', point, self.target_point, distance)
         return distance < self.min_distance
 
     def reconfigure(self, config, level):
@@ -163,17 +215,27 @@ class PathFollower(object):
             if np.linalg.norm(self.ps[0] - self.ps[len(self.ps) / 2]) > 1:
                 self.loop = True
         self.yaws = [yaw_from_msg(pose.pose.orientation) for pose in msg.poses]
+        self.zs = [pose.pose.position.z for pose in msg.poses]
         rospy.loginfo("Got new path (loop=%s), will guide the drone", self.loop)
+        if self.track_s:
+            self.s = None
         self.start()
 
     def target_along_path(self, current_point):
-        s = self.curve.project(Point(current_point))
+        cp = Point(current_point)
+        if self.track_s:
+            dt = (rospy.Time.now() - self.last_t).to_sec()
+            print(self.s)
+            s = self.s = project(cp, self.curve, self.s, self.max_speed * dt, self.loop, self.cs)
+            print(self.s, dt, self.max_speed * dt)
+        else:
+            s = self.curve.project(cp)
         s = s + self.delta
         if s > self.cs[-1]:
             if self.loop:
                 s = s - self.cs[-1]
             else:
-                return self.ps[-1], self.yaws[-1]
+                return self.ps[-1], self.yaws[-1], self.zs[-1]
         i0 = np.argmax(self.cs > s)
         i1 = (i0 + 1) % len(self.ps)
         im1 = (i0 - 1 + len(self.ps)) % len(self.ps)
@@ -181,10 +243,12 @@ class PathFollower(object):
             ds = s
         else:
             ds = s - self.cs[im1]
-
         n = self.ls[i0]
         a = ds / n
         point = (1 - a) * self.ps[i0] + a * self.ps[i1]
+        z0 = self.zs[i0]
+        z1 = self.zs[i1]
+        z = z0 * (1 - a) + z1 * a,
         yaw0 = self.yaws[i0]
         yaw1 = self.yaws[i1]
         yaw = np.arctan2(
@@ -198,15 +262,15 @@ class PathFollower(object):
             e = np.linalg.norm(current_point - self.ps[-1])
             dist = min(dist, e)
         point = current_point + dist * dp
-        return point, yaw
+        return point, yaw, z
 
     def target_pose_along_path(self, pose_s):
         current_point = array_from_msg(pose_s.pose.position)
-        point, yaw = self.target_along_path(current_point)
+        point, yaw, z = self.target_along_path(current_point)
         q = quaternion_from_euler(0, 0, yaw)
         msg = PoseStamped(
             header=Header(frame_id=self.path.header.frame_id),
-            pose=Pose(position=PointMsg(point[0], point[1], 0), orientation=Quaternion(*q)))
+            pose=Pose(position=PointMsg(point[0], point[1], z), orientation=Quaternion(*q)))
         return msg
 
     def has_updated_pose(self, msg):
@@ -231,7 +295,9 @@ class PathFollower(object):
             if not target_pose_s:
                 rospy.logerr('No target pose')
                 return
-            self.publish_target_pose(target_pose_s)
+            if self.should_send():
+                self.last_t = rospy.Time.now()
+                self.publish_target_pose(target_pose_s)
 
     def has_updated_odometry(self, msg):
         if self.following:
