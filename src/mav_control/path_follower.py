@@ -48,6 +48,7 @@ def path_in_frame(tf_buffer, path, frame_id):
 
 
 def pose_in_frame(tf_buffer, pose_s, frame_id):
+    # rospy.loginfo('pose_in_frame %s %s %s', tf_buffer, pose_s, frame_id)
     t = get_transform(tf_buffer, frame_id, pose_s.header.frame_id)
     if not t:
         return None
@@ -173,11 +174,11 @@ class PathFollower(object):
         return None
 
     def has_arrived(self, point):
-        rospy.loginfo('has_arrived %s', self.loop)
+        # rospy.loginfo('has_arrived %s', self.loop)
         if self.loop:
             return False
         distance = np.linalg.norm(array_from_msg(self.target_point) - array_from_msg(point))
-        rospy.loginfo('has_arrived %s %s %.1f', point, self.target_point, distance)
+        # rospy.loginfo('has_arrived %s %s %.1f', point, self.target_point, distance)
         return distance < self.min_distance
 
     def reconfigure(self, config, level):
@@ -248,7 +249,7 @@ class PathFollower(object):
         point = (1 - a) * self.ps[i0] + a * self.ps[i1]
         z0 = self.zs[i0]
         z1 = self.zs[i1]
-        z = z0 * (1 - a) + z1 * a,
+        z = z0 * (1 - a) + z1 * a
         yaw0 = self.yaws[i0]
         yaw1 = self.yaws[i1]
         yaw = np.arctan2(
