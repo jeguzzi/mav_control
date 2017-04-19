@@ -23,6 +23,7 @@ class Controller(object):
     def reconfigure(self, config, level):
         for controller in self.controllers:
             controller.reconfigure(config, level)
+        return config
 
     def init_agent_controllers(self, cls):
         self.controllers = [cls(tf_buffer=self.tf_buffer)]
