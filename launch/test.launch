@@ -1,14 +1,20 @@
 <launch>
     <arg name="ns" default="rover_0"/>
     <group ns="$(arg ns)">
-        <node pkg="mav_control" type="follow_path_utm.py" name="follow_path" output="screen" required="true">
+        <node pkg="mav_control" type="single_mav_node.py" name="follow_path" output="screen" required="false">
             <param name="delta" value="1.4"/>
             <param name="frame_id" value="map"/>
+            <param name="min_distance" value="0.8"/>
+            <param name="track_s" value="False"/>
+            <param name="altitude_frame" value="terrain"/>
+            <param name="overwrite_altitude_target" value="True"/>
+            <param name="altitude_target" value="0.0"/>
             <remap from="target" to="mavros/setpoint_raw/global"/>
             <remap from="odom" to="mavros/global_position/local"/>
         </node>
-        <node pkg="mav_control" type="test.py" name="controller_test" output="screen">
+        <node pkg="mav_control" type="test_mav.py" name="controller_test" output="screen">
             <remap from="pose" to="mavros/mocap/pose"/>
+            <remap from="odom" to="mavros/mocap/odom"/>
             <rosparam param='tests' command="load" file="$(find mav_control)/config/test.yml"/>
         </node>
         <node pkg="keyboard" type="keyboard" name="keyboard"/>
