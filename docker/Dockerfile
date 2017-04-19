@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y \
    libgeos-c1v5 \
    python-pip \
    ros-kinetic-dynamic-reconfigure \
-   ros-kinetic-mavros-msgs \
+   ros-kinetic-mavros \
    ros-kinetic-tf \
    ros-kinetic-tf2-ros \
    ros-kinetic-tf2-geometry-msgs

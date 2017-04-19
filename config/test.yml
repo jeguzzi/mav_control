@@ -4,28 +4,38 @@
       - waypoint:
          frame_id: map
          point: [5, 5]
-         tol: 0.3
+         tol: 1.3
 -
    key: KEY_1
    commands:
       - waypoint:
          frame_id: map
          point: [7, 7]
-         tol: 0.3
+         tol: 1.3
       - sleep:
          duration: 2
       - waypoint:
          frame_id: map
          point: [7, 3]
+         tol: 1.3
+      - sleep:
+         duration: 2
       - waypoint:
          frame_id: map
          point: [3, 3]
+         tol: 1.3
+      - sleep:
+         duration: 2
       - waypoint:
          frame_id: map
          point: [3, 7]
+         tol: 1.3
+      - sleep:
+         duration: 2
       - waypoint:
          frame_id: map
          point: [7, 7]
+         tol: 1.3
 -
    key: KEY_2
    commands:
@@ -33,3 +43,77 @@
          frame_id: map
          curve: [[5, 2], [5, 5]]
          speed: 0.3
+-
+   key: KEY_3
+   commands:
+      - path:
+         frame_id: map
+         curve: [[3, 3], [3, 7], [7, 7], [7, 3], [3, 3]]
+         tol: 1.0
+-
+   key: KEY_4
+   commands:
+      - path:
+         frame_id: map
+         curve: [[3, 3], [3, 7], [7, 7]]
+         tol: 1.0
+      - path:
+         frame_id: map
+         curve: [[7, 7], [3, 3], [7, 3], [3, 3]]
+         tol: 1.0
+      - sleep:
+         duration: 2
+      - path:
+         frame_id: map
+         curve: [[3, 3], [3, 7], [7, 7]]
+         tol: 1.0
+      - path:
+         frame_id: map
+         curve: [[7, 7], [3, 3], [7, 3], [3, 3]]
+         tol: 1.0
+-
+   key: KEY_z
+   commands:
+      - loop:
+         name: 'eight'
+         alpha: 0.6
+         frame_id: map
+         center: [5, 5]
+         radius: 2
+-
+   key: KEY_x
+   commands:
+      - loop:
+         name: 'f1'
+         frame_id: map
+         center: [5, 5]
+         radius: 2
+-
+   key: KEY_c
+   commands:
+      - loop:
+         name: 'circle'
+         frame_id: map
+         center: [5, 5]
+         radius: 2
+-
+   key: KEY_q
+   commands:
+      - sync:
+         targets: [L2S114]
+         point: [5.7, 2.9]
+         frame_id: map
+         tol: 1.0
+-
+   key: KEY_w
+   commands:
+      - sync:
+         targets: [L2S72]
+         point: [5.7, 7.4]
+         frame_id: map
+         tol: 1.0
+-
+   key: KEY_e
+   commands:
+      - sync:
+         targets: [L2S55, L2S45, ...]

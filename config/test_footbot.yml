@@ -79,7 +79,7 @@
          alpha: 0.6
          frame_id: map
          center: [5, 5]
-         radius: 2
+         radius: 1.5
 -
    key: KEY_x
    commands:
@@ -87,7 +87,7 @@
          name: 'f1'
          frame_id: map
          center: [5, 5]
-         radius: 2
+         radius: 1
 -
    key: KEY_c
    commands:
@@ -95,7 +95,7 @@
          name: 'circle'
          frame_id: map
          center: [5, 5]
-         radius: 2
+         radius: 1
 -
    key: KEY_q
    commands:

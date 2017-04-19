@@ -65,6 +65,9 @@ def path_msg(wps, center, radius, frame_id):
     msg.header.stamp = rospy.Time.now()
     msg.header.frame_id = frame_id
 
+    if len(center) == 2:
+        center = center + [0]
+
     pose_header = Header(frame_id=frame_id)
 
     msg.poses = [

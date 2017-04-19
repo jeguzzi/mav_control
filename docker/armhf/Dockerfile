@@ -1,7 +1,6 @@
 FROM jeguzzi/ros:armhf-kinetic-ros-dev
 MAINTAINER Jerome Guzzi "jerome@idsia.ch"
 
-
 RUN apt-get update && apt-get install -y \
    libgeos-c1v5 \
    python-pip \
@@ -13,6 +12,6 @@ RUN apt-get update && apt-get install -y \
 
 RUN pip install numpy shapely utm
 
-COPY  . src/mav_control
+COPY . src/mav_control
 
 RUN catkin build
