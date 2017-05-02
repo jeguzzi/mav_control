@@ -77,7 +77,10 @@ class WaypointCommand(object):
     def __init__(self, suite, frame_id, point, tol=0.5, speed=0.3):
         self.waypoint = PoseStamped()
         self.waypoint.header.frame_id = frame_id
-        p = point + [0]
+        if len(point) == 2:
+            p = point + [0]
+        elif len(point) == 3:
+            p = point
         self.waypoint.pose.position = Point(*p)
         self.test = suite.travelled(self.waypoint, tol)
         self.pub = suite.waypoint_pub
@@ -99,11 +102,11 @@ class WaypointCommand(object):
 
 
 class PathCommand(object):
-    def __init__(self, suite, frame_id, curve, tol=0.5, speed=0.3):
+    def __init__(self, suite, frame_id, curve, tol=0.5, speed=0.3, altitude=0):
         h = Header(frame_id=frame_id)
         self.path = Path()
         self.path.header = h
-        self.path.poses = [PoseStamped(h, Pose(position=Point(*(p + [0])))) for p in curve]
+        self.path.poses = [PoseStamped(h, Pose(position=Point(*(p + [altitude])))) for p in curve]
         self.test = suite.travelled(self.path.poses[-1], tol)
         self.tol = tol
         self.pub = suite.path_pub
