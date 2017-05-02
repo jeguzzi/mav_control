@@ -1,0 +1,28 @@
+<launch>
+    <arg name="ns" default="copter_0"/>
+    <group ns="$(arg ns)">
+        <node pkg="mav_control" type="single_mav_node.py" name="follow_path" output="screen" required="false">
+          <param name="kind" value="copter"/>
+          <param name="delta" value="0.5"/>
+          <param name="distance" value="1.2"/>
+          <param name="max_rate" value="6.0"/>
+          <param name="min_distance" value="0.5"/>
+          <param name="odom" value="mavros/global_position/local"/>
+          <param name="target" value="mavros/setpoint_raw/global"/>
+          <param name="max_speed" value="1"/>
+          <param name="track_s" value="false"/>
+          <param name="control_order" value="0"/>
+          <param name="speed" value="0.3"/>
+          <param name="angular_speed" value="0.3"/>
+          <param name="tau" value="1"/>
+          <param name='flat' value="true"/>
+          <param name='altitude_frame' value='amsl'/>
+        </node>
+        <node pkg="mav_control" type="test_mav.py" name="controller_test" output="screen">
+            <remap from="pose" to="mavros/mocap/pose"/>
+            <remap from="odom" to="mavros/mocap/odom"/>
+            <rosparam param='tests' command="load" file="$(find mav_control)/config/test_copter.yml"/>
+        </node>
+        <node pkg="keyboard" type="keyboard" name="keyboard"/>
+    </group>
+</launch>
