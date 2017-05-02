@@ -14,9 +14,11 @@ class MAVControlSuite(ControlSuite):
             if not self.state:
                 print('not connected')
                 return False
-            if self.state.guided:
+            if self.state.guided and self.state.mode not in ['MANUAL', 'LOITER']:
                 print('guided')
                 return False
+            else:
+                print('hovering')
             return self.arrived_at(pose_s, tol)
         return t
 
