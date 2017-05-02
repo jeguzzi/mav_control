@@ -1,0 +1,23 @@
+<launch>
+   <arg name="ns" default="bebop"/>
+   <group ns="$(arg ns)">
+      <node pkg="tf2_ros" type="static_transform_publisher" name="map2world" args="5.367 4.67 0 1.5708 0 0 map World" />
+      <node pkg="mav_control" type="single_bebop_node.py" name="controller" output="screen" clear_params="true">
+         <param name="delta" value="0.5"/>
+         <param name="distance" value="0.0"/>
+         <param name="max_rate" value="6.0"/>
+         <param name="min_distance" value="0.2"/>
+         <param name="odom" value="mocap_odom"/>
+         <param name="max_speed" value="1"/>
+         <param name="track_s" value="false"/>
+         <param name="control_order" value="0"/>
+         <remap from="target_twist" to="des_vel"/>
+         <remap from="target_pose" to="target"/>
+      </node>
+      <node pkg="mav_control" type="test.py" name="controller_test" output="screen">
+         <remap from="odom" to="mocap_odom"/>
+         <rosparam param='tests' command="load" file="$(find mav_control)/config/test_bebop.yml"/>
+      </node>
+      <node pkg="keyboard" type="keyboard" name="keyboard"/>
+   </group>
+</launch>
