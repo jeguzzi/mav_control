@@ -36,5 +36,5 @@ class MultiController(Controller):
         hostname = platform.uname()[1]
         control_range = rospy.get_param("/controllers/{0}/range".format(hostname), None)
         self.controllers = [cls(ns="{0}/".format(drone['ns']), control_range=control_range,
-                                tf_buffer=self.tf_buffer)
+                                tf_buffer=self.tf_buffer, kind=drone.get('kind', None))
                             for drone in drones]
