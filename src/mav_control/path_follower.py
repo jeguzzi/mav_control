@@ -163,6 +163,7 @@ class PathFollower(object):
         self.control_order = rospy.get_param("~control_order", 0)
         # relaxation time for 1th order control, i.e should reach path/point in \tau time
         self.tau = rospy.get_param("~tau", 0.5)
+        self.eta = rospy.get_param("~eta", 1.0)
         # speed for 1th order control, i.e. should move at constant speed `speed`
         self.target_speed = rospy.get_param("~speed", 0.3)
         self.target_angular_speed = rospy.get_param("~angular_speed", 0.3)
@@ -376,7 +377,7 @@ class PathFollower(object):
             target_dist = np.inf
         else:
             target_dist = np.linalg.norm(self.ps[-1] - current_point)
-        target_speed = np.min([nv, self.target_speed, 0.5 * target_dist / self.tau])
+        target_speed = np.min([nv, self.target_speed, 0.5 * target_dist / self.eta])
         v = v / nv * target_speed
         vz = t_speed(current_z, z, self.tau, self.target_speed)
 
