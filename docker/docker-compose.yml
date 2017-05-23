@@ -3,8 +3,8 @@ services:
   control:
     image: jeguzzi/df:mav_control
     build:
-      dockerfile: docker/Dockerfile
-      context: ..
+      dockerfile: mav_control/docker/Dockerfile
+      context: ../..
     command: roslaunch mav_control main_utm.launch
     env_file:
       - ./ros.env
