@@ -150,6 +150,9 @@ class PathFollower(object):
         self.waypoint = None
         self.waypoint_velocity = None
         self.loop = False
+
+        self.max_position_error = rospy.get_param("~max_position_error", 10.0)
+
         self.frame_id = rospy.get_param("~frame_id", "map")
         self.delta = rospy.get_param("~delta", 0.5)
         self.horizon = rospy.get_param("~distance", 1.5)
@@ -241,7 +244,7 @@ class PathFollower(object):
     def target_point(self):
         if self.waypoint:
             return self.waypoint.pose.position
-        if self.path:
+        if self.path and self.path.poses:
             return self.path.poses[-1].pose.position
         return None
 
@@ -326,6 +329,12 @@ class PathFollower(object):
             self.s = None
         self.start()
 
+# TODO: add a parameter for s velocity (vs s space).
+# At low speed the dp/tau component is much more important
+# e.g. v ~ 0.3, delta ~ 0.5 m, tau ~ 1 s -> v = 0.5/1.0 = 0.5 m/s > max_speed
+# so it's basically the same controller as before. May use v at the projection point +s
+# and p at the projection point
+
     def target_along_path(self, current_point, current_z):
         cp = Point(current_point)
         if self.track_s:
@@ -335,6 +344,7 @@ class PathFollower(object):
             # print(self.s, dt, self.max_speed * dt)
         else:
             s = self.curve.project(cp)
+        # nearest_point = self.curve.interpolate(s).coords[0]
         s = s + self.delta
         if s > self.cs[-1]:
             if self.loop:
@@ -361,7 +371,9 @@ class PathFollower(object):
             np.sin(yaw0) * (1 - a) + np.sin(yaw1) * a,
             np.cos(yaw0) * (1 - a) + np.cos(yaw1) * a)
         dp = (point - current_point)
-        v = self.target_speed * self.vs[i0] + dp / self.tau
+        target_v = self.vs[i0]
+        dp_t = dp - np.dot(target_v, dp) * target_v
+        v = self.target_speed * target_v + dp_t / self.tau
 
         dpn = np.linalg.norm(dp)
         dp = dp / dpn
@@ -377,7 +389,7 @@ class PathFollower(object):
             target_dist = np.inf
         else:
             target_dist = np.linalg.norm(self.ps[-1] - current_point)
-        target_speed = np.min([nv, self.target_speed, 0.5 * target_dist / self.eta])
+        target_speed = np.min([nv, self.target_speed, target_dist / self.eta])
         v = v / nv * target_speed
         vz = t_speed(current_z, z, self.tau, self.target_speed)
 
@@ -489,6 +501,11 @@ class PathFollower(object):
 
     def has_updated_odometry(self, msg):
         if self.following:
+            # CHANGED: test if localized
+            # as of covariance is small enough
+            if msg.pose.covariance[0] > self.max_position_error ** 2:
+                return
+
             pose_stamped = PoseStamped()
             pose_stamped.header = msg.header
             pose_stamped.pose = msg.pose.pose
