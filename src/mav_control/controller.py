@@ -11,8 +11,10 @@ class Controller(object):
     def __init__(self, cls):
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
+        rospy.loginfo('Will initialize agent controller')
         self.init_agent_controllers(cls)
         Server(PathFollowerConfig, self.reconfigure)
+        rospy.loginfo('Controller initialized')
         rospy.on_shutdown(self.shutdown)
 
     def shutdown(self):

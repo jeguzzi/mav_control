@@ -82,6 +82,7 @@ class MAVPathFollower(PathFollower):
     """docstring for PathFollower"""
 
     def __init__(self, tf_buffer=None, ns='', control_range=None, kind=None):
+        rospy.loginfo('Will init MAVPathFollower for %s', ns)
         super(MAVPathFollower, self).__init__(tf_buffer=tf_buffer, ns=ns,
                                               control_range=control_range, kind=kind)
         target = rospy.get_param("~target", 'target')
@@ -99,9 +100,14 @@ class MAVPathFollower(PathFollower):
         self.global_pub = rospy.Publisher("{ns}{target}".format(ns=ns, target=target),
                                           GlobalPositionTarget, queue_size=1)
         self.change_mode = None
-        rospy.wait_for_service('{ns}mavros/set_mode'.format(ns=ns))
-        self.change_mode = rospy.ServiceProxy('{ns}mavros/set_mode'.format(ns=ns), SetMode)
-
+        rospy.loginfo('Will wait for service %smavros/set_mode', ns)
+        try:
+            rospy.wait_for_service('{ns}mavros/set_mode'.format(ns=ns), timeout=5)
+            rospy.loginfo('Service %smavros/set_mode is available', ns)
+            self.change_mode = rospy.ServiceProxy('{ns}mavros/set_mode'.format(ns=ns), SetMode)
+        except rospy.ROSException:
+            rospy.logwarn('Service %smavros/set_mode is not available', ns)
+        rospy.loginfo('Initialized MAVPathFollower for %s', ns)
     # def reconfigure(self, config, level):
     #     config = super(MAVPathFollower, self).reconfigure(config, level)
     #     alt_frame = config.get('altitude_frame', self.altitude_frame)
