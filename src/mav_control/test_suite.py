@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 import rospy
 import tf2_ros
@@ -29,13 +28,13 @@ class ControlSuite(object):
 
     def arrived_at(self, pose_s, tol):
         if not self.pose:
-            print('not localized')
+            rospy.logwarn('not localized')
             return False
         p = pose_in_frame(self.tf_buffer, self.pose, pose_s.header.frame_id)
         dp = array_from_msg(p.pose.position) - array_from_msg(pose_s.pose.position)
         dist = np.linalg.norm(dp)
         if dist < tol:
-            print('DONE')
+            rospy.loginfo('DONE')
             return True
         return False
 

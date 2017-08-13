@@ -9,7 +9,8 @@ from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
 def loop(_type, center, radius, frame_id, **kwargs):
     shape = {'f1': f1_path,
              'eight': eight_path,
-             'circle': circle_path}
+             'circle': circle_path,
+             'square': square_path}
     if _type not in shape:
         return None
     try:
@@ -32,6 +33,14 @@ def arc(center, radius, a0, a1, subdivisions=20):
 
 def circle_path():
     return arc((0, 0), 1, 0, 2 * np.pi)
+
+
+def square_path():
+    wps = [(np.array([0.5, 0.5, 0]), np.pi * 0.5),
+           (np.array([-0.5, 0.5, 0]), np.pi),
+           (np.array([-0.5, -0.5, 0]), -np.pi * 0.5),
+           (np.array([0.5, -0.5, 0]), 0)]
+    return wps + [wps[0]]
 
 
 def f1_path():

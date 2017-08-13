@@ -210,7 +210,7 @@ class PathFollower(object):
         rospy.loginfo('Stop %s', was_following)
         self.following = False
         # HACK: Always set self.following = None first
-        # Else path may be unset by following may be true
+        # Else path may be unset but following may be true
         self.path = None
         self.curve = None
         self.waypoint = None
